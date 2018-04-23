@@ -88,16 +88,16 @@ NotificationsComponent.prototype.addEventListener = function(type: string, handl
 		);
 	}
 
-	_notifHandlers.set(type, listener);
+	_notifHandlers.set(handler, listener);
 };
 
 NotificationsComponent.prototype.removeEventListener = function(type: string, handler: Function) {
-	var listener = _notifHandlers.get(type);
+	var listener = _notifHandlers.get(handler);
 	if (!listener) {
 		return;
 	}
 	listener.remove();
-	_notifHandlers.delete(type);
+	_notifHandlers.delete(handler);
 }
 
 NotificationsComponent.prototype.registerNotificationActions = function(details: Object) {

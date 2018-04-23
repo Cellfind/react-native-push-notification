@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import org.json.JSONObject;
+
 import java.util.Set;
 
 import static com.dieam.reactnativepushnotification.modules.RNPushNotification.LOG_TAG;
@@ -36,7 +38,7 @@ public class RNPushNotificationBootEventReceiver extends BroadcastReceiver {
                         if (notificationAttributes.getFireDate() < System.currentTimeMillis()) {
                             Log.i(LOG_TAG, "RNPushNotificationBootEventReceiver: Showing notification for " +
                                     notificationAttributes.getId());
-                            rnPushNotificationHelper.sendToNotificationCentre(notificationAttributes.toBundle());
+                            rnPushNotificationHelper.sendNotification(notificationAttributes.toBundle());
                         } else {
                             Log.i(LOG_TAG, "RNPushNotificationBootEventReceiver: Scheduling notification for " +
                                     notificationAttributes.getId());

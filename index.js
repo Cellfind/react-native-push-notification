@@ -18,7 +18,6 @@ var Notifications = {
 	onNotification: false,
   onRemoteFetch: false,
 	isLoaded: false,
-	hasPoppedInitialNotification: false,
 
 	isPermissionsRequestPending: false,
 
@@ -85,17 +84,16 @@ Notifications.configure = function(options: Object) {
 		this.callNative( 'addEventListener', [ 'localNotification', this._onNotification ] );
 		Platform.OS === 'android' ? this.callNative( 'addEventListener', [ 'remoteFetch', this._onRemoteFetch ] ) : null
 
-		this.isLoaded = true;
-	}
+		if ( typeof options.popInitialNotification === 'undefined' ||
+			 options.popInitialNotification === true ) {
+			this.popInitialNotification(function(firstNotification) {
+				if ( firstNotification !== null ) {
+					this._onNotification(firstNotification, true);
+				}
+			}.bind(this));
+		}
 
-	if ( this.hasPoppedInitialNotification === false &&
-			( options.popInitialNotification === undefined || options.popInitialNotification === true ) ) {
-		this.popInitialNotification(function(firstNotification) {
-			if ( firstNotification !== null ) {
-				this._onNotification(firstNotification, true);
-			}
-		}.bind(this));
-		this.hasPoppedInitialNotification = true;
+		this.isLoaded = true;
 	}
 
 	if ( options.requestPermissions !== false ) {
@@ -110,25 +108,28 @@ Notifications.unregister = function() {
 	this.callNative( 'removeEventListener', [ 'notification', this._onNotification ] )
 	this.callNative( 'removeEventListener', [ 'localNotification', this._onNotification ] )
 	Platform.OS === 'android' ? this.callNative( 'removeEventListener', [ 'remoteFetch', this._onRemoteFetch ] ) : null
-	this.isLoaded = false;
 };
 
 /**
  * Local Notifications
  * @param {Object}		details
- * @param {String}		details.title  -  The title displayed in the notification alert.
  * @param {String}		details.message - The message displayed in the notification alert.
+ * @param {String}		details.title  -  ANDROID ONLY: The title displayed in the notification alert.
  * @param {String}		details.ticker -  ANDROID ONLY: The ticker displayed in the status bar.
  * @param {Object}		details.userInfo -  iOS ONLY: The userInfo used in the notification alert.
  */
 Notifications.localNotification = function(details: Object) {
 	if ( Platform.OS === 'ios' ) {
-		// https://developer.apple.com/reference/uikit/uilocalnotification
+		let soundName = 'default'; // play sound (and vibrate) as default behaviour
 
-		let soundName = details.soundName ? details.soundName : 'default'; // play sound (and vibrate) as default behaviour
-
-		if (details.hasOwnProperty('playSound') && !details.playSound) {
-			soundName = ''; // empty string results in no sound (and no vibration)
+		if(details.hasOwnProperty("playSound")) {
+			if(details.playSound) {
+				if(details.soundName) {
+					soundName = details.soundName;
+				}
+			} else {
+				soundName = '';// empty string results in no sound (and no vibration)
+			}
 		}
 
 		// for valid fields see: https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Chapters/IPhoneOSClientImp.html
@@ -155,37 +156,14 @@ Notifications.localNotification = function(details: Object) {
  */
 Notifications.localNotificationSchedule = function(details: Object) {
 	if ( Platform.OS === 'ios' ) {
-		let soundName = details.soundName ? details.soundName : 'default'; // play sound (and vibrate) as default behaviour
-
-		if (details.hasOwnProperty('playSound') && !details.playSound) {
-			soundName = ''; // empty string results in no sound (and no vibration)
-		}
-
-		const iosDetails = {
-			fireDate: details.date.toISOString(),
-			alertTitle: details.title,
+		this.handler.scheduleLocalNotification({
+			fireDate: details.date,
 			alertBody: details.message,
-			soundName: soundName,
-			userInfo: details.userInfo,
-			repeatInterval: details.repeatType
-		};
-
-		if(details.number) {
-			iosDetails.applicationIconBadgeNumber = parseInt(details.number, 10);
-		}
-
-		// ignore Android only repeatType
-		if (!details.repeatType || details.repeatType === 'time') {
-			delete iosDetails.repeatInterval;
-		}
-		this.handler.scheduleLocalNotification(iosDetails);
+			userInfo: details.userInfo
+		});
 	} else {
 		details.fireDate = details.date.getTime();
 		delete details.date;
-		// ignore iOS only repeatType
-		if (['year', 'month'].includes(details.repeatType)) {
-			delete details.repeatType;
-		}
 		this.handler.scheduleLocalNotification(details);
 	}
 };
@@ -204,7 +182,7 @@ Notifications._onRemoteFetch = function(notificationData: Object) {
 	if ( this.onRemoteFetch !== false ) {
 		this.onRemoteFetch(notificationData)
 	}
-};
+} 
 
 Notifications._onNotification = function(data, isFromBackground = null) {
 	if ( isFromBackground === null ) {
@@ -223,13 +201,11 @@ Notifications._onNotification = function(data, isFromBackground = null) {
 				data: data.getData(),
 				badge: data.getBadgeCount(),
 				alert: data.getAlert(),
-				sound: data.getSound(),
-  			finish: (res) => data.finish(res)
+				sound: data.getSound()
 			});
 		} else {
 			var notificationData = {
 				foreground: ! isFromBackground,
-  			finish: () => {},
 				...data
 			};
 

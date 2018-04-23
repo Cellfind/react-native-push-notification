@@ -128,7 +128,7 @@ public class RNPushNotificationHelper {
         }
     }
 
-    public void sendToNotificationCentre(Bundle bundle) {
+    public void sendNotification(Bundle bundle) {
         try {
             Class intentClass = getMainActivityClass();
             if (intentClass == null) {
@@ -137,8 +137,7 @@ public class RNPushNotificationHelper {
             }
 
             if (bundle.getString("message") == null) {
-                // this happens when a 'data' notification is received - we do not synthesize a local notification in this case
-                Log.d(LOG_TAG, "Cannot send to notification centre because there is no 'message' field in: " + bundle);
+                Log.e(LOG_TAG, "No message specified for the notification");
                 return;
             }
 
@@ -314,14 +313,7 @@ public class RNPushNotificationHelper {
                 }
             }
 
-            // Remove the notification from the shared preferences once it has been shown
-            // to avoid showing the notification again when the phone is rebooted. If the
-            // notification is not removed, then every time the phone is rebooted, we will
-            // try to reschedule all the notifications stored in shared preferences and since
-            // these notifications will be in the past time, they will be shown immediately
-            // to the user which we shouldn't do. So, remove the notification from the shared
-            // preferences once it has been shown to the user. If it is a repeating notification
-            // it will be scheduled again.
+            // I think this needs a comment - whats it for?
             if (scheduledNotificationsPersistence.getString(notificationIdString, null) != null) {
                 SharedPreferences.Editor editor = scheduledNotificationsPersistence.edit();
                 editor.remove(notificationIdString);
@@ -420,7 +412,7 @@ public class RNPushNotificationHelper {
                 String notificationAttributesJson = scheduledNotificationsPersistence.getString(id, null);
                 if (notificationAttributesJson != null) {
                     RNPushNotificationAttributes notificationAttributes = fromJson(notificationAttributesJson);
-                    if (notificationAttributes.matches(userInfo)) {
+                    if(notificationAttributes.matches(userInfo)) {
                         cancelScheduledNotification(id);
                     }
                 }
